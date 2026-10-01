@@ -1,0 +1,13 @@
+
+# Rust
+/target/
+
+# Coverage
+/coverage/
+/coverage-target/
+*.profraw
+
+# Tooling caches
+.direnv/
+/.idea/
+.mise.local.toml

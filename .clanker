@@ -1,0 +1,2 @@
+# Project identity for clanker, kb, planner, silent-critic and mnene; see tftio_lib::project.
+project = "silent-critic"

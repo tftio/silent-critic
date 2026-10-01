@@ -1,0 +1,34 @@
+#:schema https://www.schemastore.org/prek.json
+
+default_install_hook_types = ["pre-commit", "commit-msg"]
+
+[[repos]]
+repo = "builtin"
+hooks = [
+  { id = "check-added-large-files", stages = ["pre-commit"] },
+  { id = "check-toml", stages = ["pre-commit"] },
+  { id = "check-yaml", stages = ["pre-commit"] },
+  { id = "trailing-whitespace", stages = ["manual"] },
+  { id = "end-of-file-fixer", stages = ["manual"] },
+]
+
+[[repos]]
+repo = "local"
+hooks = [
+  { id = "cargo-fmt", name = "cargo fmt --check", entry = "mise run check:fmt", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "taplo-fmt", name = "taplo fmt --check", entry = "mise run check:toml", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "shellcheck", name = "shellcheck", entry = "mise run check:shell", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "typos", name = "typos", entry = "mise run check:spelling", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "cargo-clippy", name = "cargo clippy", entry = "mise run check:clippy", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "cargo-nextest", name = "cargo nextest", entry = "mise run check:test", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "cargo-doc", name = "cargo doc", entry = "mise run check:doc", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "cargo-machete", name = "cargo machete", entry = "mise run check:deps", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "cargo-audit", name = "cargo audit", entry = "mise run check:audit", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "cargo-deny", name = "cargo deny", entry = "mise run check:deny", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "cargo-package", name = "cargo package", entry = "mise run check:package", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "lockfiles", name = "lockfiles current", entry = "mise run check:locks", language = "system", pass_filenames = false, stages = ["pre-commit"] },
+  { id = "cargo-fmt-fix", name = "cargo fmt", entry = "mise run fix:fmt", language = "system", pass_filenames = false, stages = ["manual"] },
+  { id = "taplo-fmt-fix", name = "taplo fmt", entry = "mise run fix:toml", language = "system", pass_filenames = false, stages = ["manual"] },
+  { id = "typos-fix", name = "typos --write-changes", entry = "mise run fix:spelling", language = "system", pass_filenames = false, stages = ["manual"] },
+  { id = "cog-verify", name = "cog verify", entry = "mise run check:commit-msg", language = "system", stages = ["commit-msg"] },
+]

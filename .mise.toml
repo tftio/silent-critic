@@ -1,0 +1,179 @@
+[tools]
+rust = { version = "1.97.1", profile = "minimal", components = ["clippy", "rustfmt", "rust-src", "rust-analyzer", "llvm-tools"] }
+prek = "0.4.10"
+cocogitto = "7.0.0"
+taplo = "0.10.0"
+shellcheck = "0.11.0"
+typos = "1.48.0"
+# Rust dev tools are declared here rather than pinned inside task bodies: only a
+# `[tools]` declaration is visible to `mise upgrade --bump` and recorded in
+# `mise.lock`. A version embedded in a task's shell string is invisible to both,
+# and duplicating one across tasks lets the copies drift. The cargo backend
+# records a version and backend but no checksum or provenance.
+"cargo:cargo-nextest" = "0.9.140"
+"cargo:cargo-machete" = "0.9.2"
+"cargo:cargo-audit" = "0.22.2"
+"cargo:cargo-deny" = "0.20.2"
+"cargo:cargo-llvm-cov" = "0.8.7"
+"cargo:cargo-mutants" = "27.1.0"
+
+[settings]
+lockfile = true
+
+# The only task permitted to rewrite a lockfile. Every other task, hook, and CI
+# path is read-only with respect to mise.lock and Cargo.lock, so a dependency
+# moves when someone runs this and at no other time.
+[tasks.update]
+description = "Move every pinned dependency: mise tools, cargo crates, prek hooks"
+# rust-toolchain.toml is regenerated here, inline rather than as its own task, so
+# that `update` remains the only task in this file that writes a pinned artifact.
+# It is derived from the `rust` entry above and never hand-written (RS-001).
+run = '''
+mise upgrade --bump --yes
+mise lock
+cargo update
+prek update
+channel=$(taplo get -f .mise.toml 'tools.rust.version')
+profile=$(taplo get -f .mise.toml 'tools.rust.profile')
+components=$(taplo get -o json -f .mise.toml 'tools.rust.components' | tr -d '\n ')
+{
+  echo '# Derived from the `rust` entry in .mise.toml by `mise run update`, and'
+  echo '# verified against it by `mise run check:locks`. Never edit this file by'
+  echo '# hand: it is a lockfile, not a second source of truth (RS-001).'
+  echo '#'
+  echo '# Under mise this file is inert, because RUSTUP_TOOLCHAIN outranks it. It'
+  echo '# exists so every consumer mise does not reach -- the rustup proxies,'
+  echo '# rust-analyzer, an IDE, a contributor with no mise -- resolves this pin.'
+  echo '[toolchain]'
+  echo "channel = \"$channel\""
+  echo "profile = \"$profile\""
+  echo "components = $components"
+} > rust-toolchain.toml
+taplo fmt rust-toolchain.toml
+'''
+
+# The read-only counterpart to `update`, and what makes it safe for directory
+# entry to do nothing: a stale lockfile fails here instead of being silently
+# regenerated. `cargo metadata --locked` errors rather than re-resolving.
+[tasks."check:locks"]
+description = "Fail if Cargo.lock or the toolchain pin is stale; never write either"
+run = '''
+cargo metadata --locked --format-version 1 > /dev/null
+declared=$(taplo get -f .mise.toml 'tools.rust.version')
+pinned=$(taplo get -f rust-toolchain.toml 'toolchain.channel')
+if [ "$declared" != "$pinned" ]; then
+  echo "rust-toolchain.toml pins $pinned, .mise.toml declares $declared." >&2
+  echo "Run 'mise run update'; do not edit rust-toolchain.toml by hand." >&2
+  exit 1
+fi
+'''
+
+[tasks."setup:idea"]
+description = "Regenerate .idea/ from the template for this worktree"
+run = "sh scripts/create-idea.sh"
+
+[tasks."hooks:install"]
+description = "Install Git hooks through prek"
+run = "prek install --install-hooks"
+
+# The commit-msg hook routes through mise like every other hook (ENG-013): prek
+# appends the message file it was handed, and the usage spec binds it to
+# $usage_file.
+[tasks."check:commit-msg"]
+description = "Verify a commit message against the Conventional Commits spec"
+usage = 'arg "<file>"'
+run = 'cog verify --file $usage_file'
+
+[tasks.check]
+description = "Run check-only hooks exactly as CI does"
+run = "prek run --hook-stage pre-commit --all-files"
+
+[tasks.lint]
+description = "Run manual autofix hooks"
+run = "prek run --hook-stage manual --all-files"
+
+[tasks.test]
+description = "Run the Rust test suite with nextest"
+run = "cargo nextest run --locked --all-features"
+
+[tasks.ci]
+description = "Run the full CI gate"
+depends = ["check", "check:coverage"]
+
+[tasks."check:fmt"]
+description = "Check Rust formatting"
+run = "cargo fmt --all -- --check"
+
+[tasks."check:toml"]
+description = "Check TOML formatting"
+run = "taplo fmt --check"
+
+[tasks."check:shell"]
+description = "Lint shell entrypoints"
+run = "shellcheck -s bash scripts/create-idea.sh"
+
+[tasks."check:spelling"]
+description = "Check spelling"
+run = "typos --format brief"
+
+[tasks."check:clippy"]
+description = "Run clippy with warnings denied"
+run = "cargo clippy --locked --all-targets --all-features -- -D warnings"
+
+[tasks."check:test"]
+description = "Run tests"
+run = "cargo nextest run --locked --all-features"
+
+[tasks."check:doc"]
+description = "Build docs with warnings denied"
+run = 'RUSTDOCFLAGS="-D warnings" cargo doc --locked --no-deps --all-features'
+
+[tasks."check:deps"]
+description = "Detect unused dependencies"
+run = "cargo machete"
+
+[tasks."check:audit"]
+description = "Audit dependency advisories"
+run = "cargo audit"
+
+[tasks."check:deny"]
+description = "Check licenses, bans, advisories, and sources"
+run = "cargo deny check"
+
+# INVARIANT-BYPASS(RS-006): tftio-planner is a git dependency with no
+# crates.io release, and `cargo package` refuses any dependency without a
+# registry version, so a full package build cannot run. publish = false, so
+# no package is ever built; this checks what the package would contain.
+[tasks."check:package"]
+description = "Verify the crate package contents"
+run = "cargo package --list --locked --allow-dirty > /dev/null"
+
+# INVARIANT-BYPASS(RS-007): the pinned cargo-llvm-cov/LLVM report counts
+# lines as missed in never-executed crate instances (e.g. the lib test
+# artifact) although every line executes in another instance (a binary or
+# an integration test); llvm-cov show, --show-missing-lines, and the LCOV
+# export all report 0 uncovered lines regardless. The phantom count grows
+# with crate size: 5 lines (tools.rs 4, ledger.rs 1) at ~6.5k lines on the
+# morning of 2026-09-06, 9 lines (bin/silent-critic.rs 1, ledger.rs 1, render.rs
+# 2, tools.rs 5) at ~8.3k lines that evening. 99.8 admits roughly sixteen
+# such lines at the current size; restore 100 when a toolchain/cargo-llvm-cov
+# update reconciles per-instance line counts.
+[tasks."check:coverage"]
+description = "Require complete line coverage (see RS-007 bypass note)"
+run = "cargo llvm-cov nextest --locked --all-features --fail-under-lines 99.8"
+
+[tasks."fix:fmt"]
+description = "Format Rust code"
+run = "cargo fmt --all"
+
+[tasks."fix:toml"]
+description = "Format TOML files"
+run = "taplo fmt"
+
+[tasks."fix:spelling"]
+description = "Apply spelling fixes"
+run = "typos --write-changes"
+
+[tasks."exhaustive:mutants"]
+description = "Run mutation testing"
+run = "cargo mutants --all-features"

@@ -1,0 +1,8 @@
+# taplo formatting policy: keep this project's 2-space indent and inline-array
+# style, and never scan build output. Generated repos pass `taplo fmt --check`
+# out of the box (no post-generation `taplo fmt` needed).
+exclude = ["target/**"]
+
+[formatting]
+array_auto_expand = false
+array_auto_collapse = false

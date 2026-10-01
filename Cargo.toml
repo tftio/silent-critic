@@ -1,0 +1,102 @@
+[package]
+name = "tftio-silent-critic"
+version = "8.0.1"
+edition = "2024"
+rust-version = "1.97"
+license = "MIT"
+description = "MCP supervision server that runs planning-doc plans with silent-critic criteria"
+readme = "README.md"
+keywords = ["rust"]
+categories = ["development-tools"]
+publish = false
+
+[lints.rust]
+unsafe_code = "deny"
+missing_docs = "deny"
+
+[lints.clippy]
+all = { level = "deny", priority = -1 }
+pedantic = { level = "deny", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+cargo = { level = "warn", priority = -1 }
+dbg_macro = "deny"
+enum_glob_use = "deny"
+expect_used = "deny"
+indexing_slicing = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unwrap_used = "deny"
+wildcard_imports = "deny"
+multiple_crate_versions = "allow"
+cargo_common_metadata = "allow"
+missing_errors_doc = "deny"
+missing_panics_doc = "deny"
+
+[lib]
+name = "silent_critic"
+path = "src/lib.rs"
+
+[[bin]]
+name = "silent-critic"
+path = "src/bin/silent-critic.rs"
+
+# The MCP surface is a second binary rather than a `silent-critic mcp` subcommand:
+# an MCP server owns stdin and stdout for the life of the session, which is a
+# different contract from a CLI that reads a document and prints a result,
+# mirroring kb's `kb` / `kb-mcp` split.
+[[bin]]
+name = "silent-critic-mcp"
+path = "src/bin/silent-critic-mcp.rs"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+anyhow = "1"
+clap = { version = "4", features = ["derive", "env"] }
+# tftio-planner is no longer published to crates.io; it is taken from its
+# GitHub repository at a release tag. The version requirement matches the
+# tag, and keeps cargo-deny's wildcard ban satisfied.
+tftio-planner = { version = "0.5.3", git = "https://github.com/tftio/planner", tag = "v0.5.3" }
+# The fleet's shared project-identity newtype (`Slug`), so `Provenance` can
+# carry the same type `tftio_planner::model::ProjectIdentity` does rather
+# than restating the slug grammar (REPO_INVARIANTS.md ENG-010: every consumer
+# calls tftio-lib rather than re-deriving it). Same caret range tftio-planner
+# v0.5.3 itself declares (`tftio-planner/Cargo.toml`), so the two unify to one
+# `tftio-lib` from crates.io via ordinary semver resolution rather than an
+# exact pin that would conflict with it on the next tftio-lib 0.4.x release.
+tftio-lib = "0.4"
+# Repository-identity hashing (mirrors silent-critic's project::compute_repo_hash).
+sha2 = "0.10"
+# TOML is the canonical human-editable format (ENG-014/RS-009); the store's
+# per-plan binding record is TOML.
+toml = "1"
+# INVARIANT-BYPASS(RS-009): serde_json is needed at the four compatibility
+# boundaries recorded in deny.toml's [bans] comment — the mandated
+# tftio-planner dependency's diagnostic interface, the tool surface and
+# future MCP protocol adapter (T005's tool schemas/arguments and the JSON
+# responses tools render as text), the future judge provider channel, and
+# the operator CLI's `silent-critic measure --format json` rendering — never the
+# domain model or canonical storage, which never import it.
+serde_json = "1"
+# Token generation (src/token.rs): a bearer token's random component,
+# mirroring how clanker mints tokens.
+uuid = { version = "1", features = ["v4"] }
+
+# The rmcp stdio adapter (src/mcp_stdio.rs, T006): the whole of this crate's
+# dependency on an MCP protocol library, mirroring kb's `mcp_stdio.rs`
+# (`REPO_INVARIANTS.md` ENG-010). Only the stdio transport is wanted, not
+# kb's additional `transport-streamable-http-server` feature: `silent-critic-mcp`
+# is a stdio-only binary.
+rmcp = { version = "3.1.3", features = ["server", "transport-io"] }
+# rmcp's stdio transport reads stdin/writes stdout as async I/O and the
+# server future is driven to completion on a runtime; `rt` supplies the
+# runtime the binary builds by hand (mirroring kb-mcp's
+# `Builder::new_current_thread`), and `io-std`/`io-util` are what
+# `rmcp::transport::stdio()` needs for `tokio::io::{stdin,stdout}` and the
+# `AsyncRead`/`AsyncWrite` traits it adapts them through.
+tokio = { version = "1", features = ["rt", "io-std", "io-util"] }
+
+[dev-dependencies]
+assert_cmd = "2"
+tempfile = "3"

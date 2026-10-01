@@ -1,0 +1,10 @@
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  ci:
+    uses: tftio/gh-actions/.github/workflows/rust-ci.yml@v2.0.0

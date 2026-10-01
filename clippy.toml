@@ -1,0 +1,15 @@
+# RS-008: the environment is read once at the process edge into a typed
+# configuration value, not threaded through the interior. Denying std::env
+# outright is what makes that boundary visible -- the one function that reads it
+# carries an #[allow(clippy::disallowed_methods)] naming why.
+#
+# This lints first-party code only. `clap`'s `env` feature reads the environment
+# inside clap, which is the sanctioned edge for a CLI and is unaffected.
+disallowed-methods = [
+  { path = "std::env::var", reason = "read the environment only at the process edge (REPO_INVARIANTS.md RS-008)" },
+  { path = "std::env::var_os", reason = "read the environment only at the process edge (REPO_INVARIANTS.md RS-008)" },
+  { path = "std::env::vars", reason = "read the environment only at the process edge (REPO_INVARIANTS.md RS-008)" },
+  { path = "std::env::vars_os", reason = "read the environment only at the process edge (REPO_INVARIANTS.md RS-008)" },
+  { path = "std::env::set_var", reason = "do not mutate the process environment (REPO_INVARIANTS.md RS-008)" },
+  { path = "std::env::remove_var", reason = "do not mutate the process environment (REPO_INVARIANTS.md RS-008)" },
+]

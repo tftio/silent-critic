@@ -1,0 +1,11 @@
+# Derived from the `rust` entry in mise.toml by `mise run update`, and
+# verified against it by `mise run check:locks`. Never edit this file by
+# hand: it is a lockfile, not a second source of truth (RS-001).
+#
+# Under mise this file is inert, because RUSTUP_TOOLCHAIN outranks it. It
+# exists so every consumer mise does not reach -- the rustup proxies,
+# rust-analyzer, an IDE, a contributor with no mise -- resolves this pin.
+[toolchain]
+channel = "1.97.1"
+profile = "minimal"
+components = ["clippy", "rustfmt", "rust-src", "rust-analyzer", "llvm-tools"]

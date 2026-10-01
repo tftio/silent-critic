@@ -1,0 +1,72 @@
+[graph]
+all-features = true
+
+[advisories]
+git-fetch-with-cli = true
+# A yanked crate in the lockfile is a build that cannot be reproduced: the
+# committed lock still resolves, but any fresh resolution -- `cargo install
+# --git` without `--locked`, or a new contributor's first build -- fails with no
+# valid version to pick. cargo-deny only warns by default, so a yanked
+# dependency can sit in the lockfile through green CI until an install on
+# another machine fails. This repository is installed from git without a tag,
+# so a fresh resolve is the normal path, not an edge case. Fail instead.
+yanked = "deny"
+
+[licenses]
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "MPL-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "OpenSSL",
+  "Zlib",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+  "CC0-1.0",
+  "CDLA-Permissive-2.0",
+]
+confidence-threshold = 0.9
+
+[licenses.private]
+ignore = false
+registries = []
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+# INVARIANT-BYPASS(RS-009): serde_json is needed at four compatibility
+# boundaries, none of them canonical storage or the domain model: (a) the
+# mandated `tftio_planner` dependency, whose JSON is its diagnostic
+# compatibility interface, and which depends on serde_json directly and
+# transitively via tftio-lib; (b) the tool surface (`src/tools.rs`, T005) and
+# the future MCP protocol adapter built on it — tool schemas, tool
+# arguments, and JSON objects a tool renders as text — since both JSON-RPC
+# and MCP tool schemas are JSON by platform standard; (c) the future judge
+# provider channel, an external tool boundary; (d) the operator CLI's
+# `silent-critic measure --format json` (`src/measure.rs`, T012), a rendering-only
+# `--format` flag over `Measurement`/`Trajectory` values that are themselves
+# plain Rust with no `serde_json` of their own. serde_json must not enter the
+# domain model (`src/model.rs`) or any canonical storage (`src/store.rs`,
+# `src/provenance.rs`).
+
+skip = [
+  { crate = "windows-sys" },
+  { crate = "windows-targets" },
+  { crate = "windows_aarch64_gnullvm" },
+  { crate = "windows_aarch64_msvc" },
+  { crate = "windows_i686_gnu" },
+  { crate = "windows_i686_msvc" },
+  { crate = "windows_x86_64_gnu" },
+  { crate = "windows_x86_64_gnullvm" },
+  { crate = "windows_x86_64_msvc" },
+]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-registry = ["https://github.com/rust-lang/crates.io-index"]
+# tftio-planner is not on crates.io; Cargo.toml takes it from its repository.
+allow-git = ["https://github.com/tftio/planner"]
