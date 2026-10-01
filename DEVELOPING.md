@@ -84,9 +84,16 @@ with `cargo test --test judge_real_providers -- --ignored --nocapture`.
 GitHub Actions runs `mise run ci` on every pull request and on pushes to
 `main`, through the shared workflow in `tftio/gh-actions`.
 
-Releases use [release-plz](https://release-plz.dev) in git-only mode with
-publishing disabled: a push to `main` opens a release pull request that bumps
-the version and `CHANGELOG.md`; merging it tags the release and creates a
-GitHub release, which triggers the binary artifact build. Versions come from
-Conventional Commits; do not edit versions by hand. Nothing is published to
-crates.io.
+Releases are cut by hand. release-plz is not used here: it builds each release
+with `cargo package`, which requires every dependency to be on a registry, and
+`tftio-planner` is taken from its git repository. To release:
+
+1. On a branch, set `version` in `Cargo.toml` (following Semantic Versioning
+   from the Conventional Commits since the last tag), run `cargo update -p
+   tftio-silent-critic`, and add an entry to `CHANGELOG.md`.
+2. Merge the pull request once CI passes.
+3. Create the release from `main`: `gh release create v<version> --target main
+   --notes-file <notes>`. Publishing the release triggers the binary artifact
+   build in `.github/workflows/release.yml`.
+
+Nothing is published to crates.io.
