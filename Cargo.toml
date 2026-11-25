@@ -57,12 +57,12 @@ clap = { version = "4", features = ["derive", "env"] }
 # tftio-planner is no longer published to crates.io; it is taken from its
 # GitHub repository at a release tag. The version requirement matches the
 # tag, and keeps cargo-deny's wildcard ban satisfied.
-tftio-planner = { version = "0.5.3", git = "https://github.com/tftio/planner", tag = "v0.5.3" }
+tftio-planner = { version = "0.5.5", git = "https://github.com/tftio/planner", tag = "v0.5.5" }
 # The fleet's shared project-identity newtype (`Slug`), so `Provenance` can
 # carry the same type `tftio_planner::model::ProjectIdentity` does rather
 # than restating the slug grammar (REPO_INVARIANTS.md ENG-010: every consumer
 # calls tftio-lib rather than re-deriving it). Same caret range tftio-planner
-# v0.5.3 itself declares (`tftio-planner/Cargo.toml`), so the two unify to one
+# v0.5.5 itself declares (`tftio-planner/Cargo.toml`), so the two unify to one
 # `tftio-lib` from crates.io via ordinary semver resolution rather than an
 # exact pin that would conflict with it on the next tftio-lib 0.4.x release.
 tftio-lib = "0.4"
@@ -88,14 +88,14 @@ uuid = { version = "1", features = ["v4"] }
 # (`REPO_INVARIANTS.md` ENG-010). Only the stdio transport is wanted, not
 # kb's additional `transport-streamable-http-server` feature: `silent-critic-mcp`
 # is a stdio-only binary.
-rmcp = { version = "3.1.3", features = ["server", "transport-io"] }
+rmcp = { version = "3.11.0", features = ["server", "transport-io"] }
 # rmcp's stdio transport reads stdin/writes stdout as async I/O and the
 # server future is driven to completion on a runtime; `rt` supplies the
 # runtime the binary builds by hand (mirroring kb-mcp's
 # `Builder::new_current_thread`), and `io-std`/`io-util` are what
 # `rmcp::transport::stdio()` needs for `tokio::io::{stdin,stdout}` and the
 # `AsyncRead`/`AsyncWrite` traits it adapts them through.
-tokio = { version = "1", features = ["rt", "io-std", "io-util"] }
+tokio = { version = "1.53.3", features = ["rt", "io-std", "io-util"] }
 
 [dev-dependencies]
 assert_cmd = "2"
