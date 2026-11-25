@@ -3,6 +3,13 @@ all-features = true
 
 [advisories]
 git-fetch-with-cli = true
+# INVARIANT-BYPASS(RS-006): operator-approved on 2026-11-25. rmcp 3.11.0
+# requires chrono, which has no maintained release. Keep this exception scoped
+# to its unmaintained advisory; remove it when rmcp replaces chrono.
+# Upstream: https://github.com/modelcontextprotocol/rust-sdk/issues/1469
+ignore = [
+  { id = "RUSTSEC-2026-0543", reason = "rmcp requires chrono; accepted pending upstream replacement (rust-sdk#1469)" },
+]
 # A yanked crate in the lockfile is a build that cannot be reproduced: the
 # committed lock still resolves, but any fresh resolution -- `cargo install
 # --git` without `--locked`, or a new contributor's first build -- fails with no
